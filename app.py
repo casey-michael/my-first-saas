@@ -1,71 +1,69 @@
 import streamlit as st
 import requests
 
-# Function to validate the subscription status
+st.set_page_config(page_title="WordSorter SaaS", page_icon="💳")
+
+# --- LICENSE CHECK FUNCTION ---
 def check_subscription(license_key):
-    """Verifies if the license key is valid and the monthly sub is active."""
+    """Checks if the license key is currently active and paid for."""
     url = "https://api.lemonsqueezy.com/v1/licenses/validate"
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"Bearer {st.secrets['LEMON_API_KEY']}"
-    }
-    payload = {"license_key": license_key}
+    headers = {"Accept": "application/json"}
+    data = {"license_key": license_key}
     
     try:
-        response = requests.post(url, json=payload, headers=headers)
-        data = response.json()
+        response = requests.post(url, headers=headers, data=data)
+        res_data = response.json()
         
-        # 'valid' ensures the key exists; status 'active' ensures they paid this month
-        is_valid = data.get("valid", False)
-        status = data.get("meta", {}).get("status")
-        
-        return is_valid and status == "active"
-    except Exception:
-        return False
+        # Check if the license is valid AND active (not expired)
+        if res_data.get("valid") and res_data.get("license_key", {}).get("status") == "active":
+            return True, "Active"
+        elif res_data.get("license_key", {}).get("status") == "expired":
+            return False, "Subscription Expired"
+        else:
+            return False, "Invalid Key"
+    except:
+        return False, "Connection Error"
 
-# --- UI Layout ---
-st.set_page_config(page_title="Word Sorter Pro", page_icon="📝")
+# --- SIDEBAR SETUP ---
+with st.sidebar:
+    st.title("Pro Dashboard")
+    user_key = st.text_input("Enter Subscription Key:", type="password")
+    
+    is_pro = False
+    if user_key:
+        valid, message = check_subscription(user_key)
+        if valid:
+            st.success("✅ Subscription Active")
+            is_pro = True
+        else:
+            st.error(f"❌ {message}")
+            st.info("Visit the billing portal to renew.")
 
-st.sidebar.title("🔑 Subscription")
-user_key = st.sidebar.text_input("Enter License Key", type="password")
-
-if user_key:
-    if check_subscription(user_key):
-        st.sidebar.success("Access Granted ✅")
-        
-        # --- YOUR CORE APP LOGIC ---
-        st.title("Word Sorter Pro")
-        st.info("Premium Monthly Subscription Active")
-        
-        text_input = st.text_area("Enter your words (one per line):", height=250)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Sort A-Z"):
-                words = [w.strip() for w in text_input.split('\n') if w.strip()]
-                words.sort()
-                st.session_state['result'] = '\n'.join(words)
-        
-        with col2:
-            if st.button("Sort Z-A"):
-                words = [w.strip() for w in text_input.split('\n') if w.strip()]
-                words.sort(reverse=True)
-                st.session_state['result'] = '\n'.join(words)
-
-        if 'result' in st.session_state:
-            st.text_area("Sorted List:", value=st.session_state['result'], height=250)
-        # ---------------------------
-        
-    else:
-        st.sidebar.error("Invalid or Expired Key ❌")
-        st.error("### 💳 Subscription Required")
-        st.write("Your key is either incorrect or your monthly payment failed.")
-        st.link_button("Renew / Fix Subscription", "https://your-store.lemonsqueezy.com/checkout/...")
-else:
-    st.title("Welcome to Word Sorter Pro")
-    st.write("Please enter your license key in the sidebar to unlock the tool.")
     st.divider()
-    st.write("### No key? Get started today!")
-    st.write("Subscribe for **$15 initially** ($5 setup fee + $10 first month), then just $10/month.")
-    st.link_button("Get Pro Access Now", "https://your-store.lemonsqueezy.com/checkout/...")
-    st.stop() # This prevents non-paying users from seeing the code logic
+    if not is_pro:
+        st.write("Monthly Pro Plan: $10/mo")
+        st.link_button("💳 Subscribe Now", "https://yourstore.lemonsqueezy.com/checkout/...")
+
+# --- MAIN APP LOGIC ---
+st.title("📝 WordSorter Pro")
+
+if is_pro:
+    # --- PREMIUM FEATURES ---
+    text = st.text_area("Paste your list:")
+    order = st.selectbox("Order:", ["A-Z", "Z-A", "Shortest first", "Longest first"])
+    
+    if text:
+        words = text.split()
+        if order == "A-Z": words.sort()
+        elif order == "Z-A": words.sort(reverse=True)
+        elif order == "Shortest first": words.sort(key=len)
+        elif order == "Longest first": words.sort(key=len, reverse=True)
+        
+        st.write(words)
+        st.download_button("Download CSV", "\n".join(words))
+else:
+    # --- FREE FEATURES ---
+    st.info("Free Mode: A-Z sorting only (max 5 words).")
+    free_input = st.text_area("Input words:")
+    if free_input:
+        st.write(sorted(free_input.split()[:5]))
