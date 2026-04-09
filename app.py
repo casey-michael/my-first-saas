@@ -1,34 +1,71 @@
 import streamlit as st
+import requests
 
-st.set_page_config(page_title="WordSorter SaaS", page_icon="📝")
+st.set_page_config(page_title="WordSorter Pro", page_icon="🚀")
 
-st.title("📝 Smart Word Sorter")
+# --- CONFIGURATION ---
+LEMON_SQUEEZY_API_KEY = st.secrets["LEMON_API_KEY"] # Put this in your Streamlit Secrets
 
-# 1. Sidebar for Access
+def validate_license(license_key):
+    """Checks with Lemon Squeezy if the key is valid and not used by others"""
+    url = "https://api.lemonsqueezy.com/v1/licenses/activate"
+    headers = {"Accept": "application/json"}
+    data = {
+        "license_key": license_key,
+        "instance_name": "User_Device" # This locks it to their current browser/session
+    }
+    response = requests.post(url, headers=headers, data=data)
+    return response.json()
+
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("Settings")
-    access_code = st.text_input("Enter Pro Access Code:", type="password")
+    st.title("Settings")
+    user_key = st.text_input("Enter your License Key:", type="password")
+    is_pro = False
     
-    # The Lemon Squeezy Button
-    st.divider()
-    st.write("Don't have a code?")
-    st.link_button("🚀 Get Pro Access ($5)", "https://your-store.lemonsqueezy.com/checkout/...") 
+    if user_key:
+        result = validate_license(user_key)
+        if result.get("activated"):
+            st.success("Pro Active!")
+            is_pro = True
+        else:
+            st.error("Invalid or Already Used Key")
 
-# 2. Free vs Pro Logic
-if access_code == "NIGERIA2026": # You can change this or automate it later
-    st.success("Pro Access Active!")
-    # PRO FEATURES
-    user_input = st.text_area("Paste giant list (Pro Mode):")
-    if user_input:
-        words = sorted(user_input.split())
+    st.divider()
+    if not is_pro:
+        st.write("Unlock Unlimited Sorting for $10")
+        st.link_button("🚀 Buy Pro License", "https://yourstore.lemonsqueezy.com/checkout/...")
+
+# --- MAIN APP ---
+st.title("📝 WordSorter Pro")
+
+if is_pro:
+    # --- PRO FEATURES ---
+    text = st.text_area("Paste your list:")
+    sort_choice = st.selectbox("Select Sorting Method:", 
+                               ["A to Z", "Z to A", "By Length (Shortest first)", "By Length (Longest first)"])
+    
+    if text:
+        words = text.split()
+        
+        # New Feature: Advanced Sorting Logic
+        if sort_choice == "A to Z":
+            words.sort()
+        elif sort_choice == "Z to A":
+            words.sort(reverse=True)
+        elif sort_choice == "By Length (Shortest first)":
+            words.sort(key=len)
+        else:
+            words.sort(key=len, reverse=True)
+
+        st.write("✅ Sorted Results:")
         st.write(words)
-        st.download_button("Download as CSV", data="\n".join(words))
+        st.download_button("Export to CSV", data="\n".join(words))
+
 else:
-    # FREE FEATURES
-    st.info("Free Mode: Sort up to 10 words.")
-    user_input = st.text_area("Paste your words:")
-    if user_input:
-        words = user_input.split()[:10] # Limit to 10 words
-        st.write(sorted(words))
-        if len(user_input.split()) > 10:
-            st.warning("Only the first 10 words were sorted. Upgrade to Pro for unlimited!")
+    # --- FREE FEATURES ---
+    st.warning("Free version: Sorting A to Z only (Max 5 words)")
+    free_text = st.text_area("Paste words:")
+    if free_text:
+        words = sorted(free_text.split()[:5])
+        st.write(words)
