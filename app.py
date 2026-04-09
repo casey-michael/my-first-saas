@@ -1,5 +1,9 @@
 import streamlit as st
 import requests
+import re
+import pandas as pd
+from fpdf import FPDF
+from io import BytesIO
 
 # --- CONFIGURATION ---
 CHECKOUT_URL = "https://your-store.lemonsqueezy.com/checkout/..."
@@ -21,6 +25,23 @@ def is_premium(license_key):
     except:
         return False
 
+# --- EXPORT FUNCTIONS ---
+def create_pdf(word_list):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Word Sorter Pro - Results", ln=1, align='C')
+    for word in word_list:
+        pdf.cell(200, 10, txt=word, ln=1)
+    return pdf.output(dest='S').encode('latin-1')
+
+def create_excel(word_list):
+    df = pd.DataFrame(word_list, columns=["Sorted Words"])
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
 # --- UI SETUP ---
 st.set_page_config(page_title="Word Sorter Pro", page_icon="📝")
 st.title("📝 Word Sorter Pro")
@@ -33,48 +54,56 @@ has_premium = is_premium(user_key)
 if has_premium:
     st.sidebar.success("Premium Active ✅")
 else:
-    st.sidebar.info(f"Free Version: Max {FREE_LIMIT} words")
+    st.sidebar.info(f"Free Version: Sorting first {FREE_LIMIT} words only.")
 
 # --- MAIN APP LOGIC ---
-text_input = st.text_area("Paste your words (one per line):", height=250)
+text_input = st.text_area("Paste your story or paragraph:", height=200)
 
 if text_input:
-    # Process the list
-    words = [w.strip() for w in text_input.split('\n') if w.strip()]
-    word_count = len(words)
+    all_words = re.findall(r'\b\w+\b', text_input)
+    total_count = len(all_words)
     
-    st.write(f"**Word Count:** {word_count}")
-
-    # Check if user is allowed to sort
-    if word_count <= FREE_LIMIT or has_premium:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Sort A-Z"):
-                words.sort()
-                st.session_state['result'] = '\n'.join(words)
-        
-        with col2:
-            if st.button("Sort Z-A"):
-                words.sort(reverse=True)
-                st.session_state['result'] = '\n'.join(words)
-
-        if 'result' in st.session_state:
-            st.divider()
-            st.subheader("Sorted Results:")
-            st.text_area("Result Output", value=st.session_state['result'], height=250, label_visibility="collapsed")
-            
-            st.download_button(
-                label="📥 Download List",
-                data=st.session_state['result'],
-                file_name="sorted_words.txt"
-            )
+    # Process Slicing
+    if has_premium:
+        words_to_sort = all_words
     else:
-        # --- PAYWALL ---
-        st.error(f"🛑 Limit Reached! You are trying to sort **{word_count}** words.")
-        st.warning(f"The free version is limited to **{FREE_LIMIT}** words.")
-        st.write("### Unlock Unlimited Sorting")
-        st.write("Subscribe for **$15 initially** (includes setup fee), then just **$10/month**.")
-        st.link_button("Upgrade to Premium Now", CHECKOUT_URL)
+        words_to_sort = all_words[:FREE_LIMIT]
+
+    col1, col2 = st.columns(2)
+    sorted_result = None
+
+    with col1:
+        if st.button("Sort A-Z"):
+            words_to_sort.sort(key=str.lower)
+            sorted_result = words_to_sort
+    
+    with col2:
+        if st.button("Sort Z-A"):
+            words_to_sort.sort(key=str.lower, reverse=True)
+            sorted_result = words_to_sort
+
+    if sorted_result:
+        st.divider()
+        st.write(", ".join(sorted_result))
+        
+        # --- EXPORT SECTION ---
+        st.subheader("📥 Export Results")
+        
+        # Basic .txt is free for everyone
+        st.download_button("Download as Text (.txt)", data="\n".join(sorted_result), file_name="words.txt")
+
+        # Premium Exports
+        if has_premium:
+            c1, c2 = st.columns(2)
+            with c1:
+                pdf_data = create_pdf(sorted_result)
+                st.download_button("Download as PDF", data=pdf_data, file_name="sorted.pdf", mime="application/pdf")
+            with c2:
+                xlsx_data = create_excel(sorted_result)
+                st.download_button("Download as Excel", data=xlsx_data, file_name="sorted.xlsx", mime="application/vnd.ms-excel")
+        else:
+            st.warning("💎 PDF & Excel exports are for Premium members only.")
+            st.info("Upgrade for **$15 initially**, then **$10/month** to unlock pro file types.")
+            st.link_button("Upgrade Now", CHECKOUT_URL)
 else:
-    st.info("Paste some words above to get started!")
+    st.info("Paste your text above to start sorting!")
