@@ -13,16 +13,42 @@ FREE_LIMIT = 10
 def is_premium(license_key):
     if not license_key:
         return False
-    url = "https://api.lemonsqueezy.com/v1/licenses/validate"
+    
+    # We use the 'activate' link to turn the key from Inactive to Active
+    url = "https://api.lemonsqueezy.com/v1/licenses/activate"
     headers = {
         "Accept": "application/json",
         "Authorization": f"Bearer {st.secrets['LEMON_API_KEY']}"
     }
+    
+    # Lemon Squeezy requires 'instance_name' to track which device is using the key
+    payload = {
+        "license_key": license_key,
+        "instance_name": "User_Laptop"
+    }
+
     try:
-        response = requests.post(url, json={"license_key": license_key}, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
         data = response.json()
-        return data.get("valid", False) and data.get("meta", {}).get("status") == "active"
-    except:
+        
+        # This will show the real reason for failure in your black CMD window
+        print(f"Lemon Squeezy Response: {data}")
+
+        # Success Case 1: Key just became active
+        if data.get("activated") == True:
+            return True
+        
+        # Success Case 2: Key was already active from a previous session
+        if data.get("error") == "license_key_already_active":
+            return True
+
+        # Failure Case: Show the specific error in the sidebar for debugging
+        if "error" in data:
+            st.sidebar.error(f"Issue: {data['error']}")
+            
+        return False
+    except Exception as e:
+        st.sidebar.error(f"Connection Error: {e}")
         return False
 
 # --- EXPORT HELPERS ---
