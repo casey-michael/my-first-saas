@@ -6,11 +6,10 @@ from fpdf import FPDF
 from io import BytesIO
 
 # --- CONFIGURATION ---
-CHECKOUT_URL = "https://your-store.lemonsqueezy.com/checkout/..."
+CHECK_LINK = "https://your-store.lemonsqueezy.com/checkout/..."
 FREE_LIMIT = 10
 
 def is_premium(license_key):
-    """Checks if the license key is valid and subscription is active."""
     if not license_key:
         return False
     url = "https://api.lemonsqueezy.com/v1/licenses/validate"
@@ -25,7 +24,7 @@ def is_premium(license_key):
     except:
         return False
 
-# --- EXPORT FUNCTIONS ---
+# --- EXPORT HELPERS ---
 def create_pdf(word_list):
     pdf = FPDF()
     pdf.add_page()
@@ -36,87 +35,76 @@ def create_pdf(word_list):
     return pdf.output(dest='S').encode('latin-1')
 
 def create_excel(word_list):
-    # Creating a numbered list for Excel
-    numbered_data = {
-        "No.": list(range(1, len(word_list) + 1)),
-        "Sorted Words": word_list
-    }
-    df = pd.DataFrame(numbered_data)
+    df = pd.DataFrame({"No.": list(range(1, len(word_list) + 1)), "Sorted Words": word_list})
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False)
     return output.getvalue()
 
-# --- UI SETUP ---
+# --- APP UI ---
 st.set_page_config(page_title="Word Sorter Pro", page_icon="📝")
 st.title("📝 Word Sorter Pro")
 
 # --- SIDEBAR ---
 st.sidebar.title("Settings")
-user_key = st.sidebar.text_input("Premium License Key", type="password")
+user_key = st.sidebar.text_input("Enter License Key", type="password")
 has_premium = is_premium(user_key)
 
 if has_premium:
     st.sidebar.success("Premium Active ✅")
 else:
-    st.sidebar.info(f"Free Version: Sorting first {FREE_LIMIT} words only.")
+    st.sidebar.warning("Free Tier: 10 Word Limit")
 
-# --- MAIN APP LOGIC ---
-text_input = st.text_area("Paste your story or paragraph:", height=200)
+# --- CORE LOGIC ---
+text_input = st.text_area("Paste your text here:", height=200, placeholder="Once upon a time...")
 
 if text_input:
     all_words = re.findall(r'\b\w+\b', text_input)
     total_count = len(all_words)
     
-    # Process Slicing & Alerts
-    if has_premium:
-        words_to_sort = all_words
-    else:
-        words_to_sort = all_words[:FREE_LIMIT]
-        if total_count > FREE_LIMIT:
-            st.warning(f"🔔 **Free Version Alert:** You have {total_count} words, but we can only sort the first {FREE_LIMIT}. Upgrade to Premium to sort all words instantly!")
-
+    # 1. Alert for Word Count Limit
+    if not has_premium and total_count > FREE_LIMIT:
+        st.warning(f"⚠️ **Limit Detected:** You have {total_count} words. Only the first {FREE_LIMIT} will be sorted in Free Mode. Upgrade to sort the full text!")
+    
+    # Process Slicing
+    words_to_sort = all_words if has_premium else all_words[:FREE_LIMIT]
+    
     col1, col2 = st.columns(2)
     sorted_result = None
 
-    with col1:
-        if st.button("Sort A-Z"):
-            words_to_sort.sort(key=str.lower)
-            sorted_result = words_to_sort
-    
-    with col2:
-        if st.button("Sort Z-A"):
-            words_to_sort.sort(key=str.lower, reverse=True)
-            sorted_result = words_to_sort
+    if col1.button("Sort A-Z"):
+        words_to_sort.sort(key=str.lower)
+        sorted_result = words_to_sort
+    if col2.button("Sort Z-A"):
+        words_to_sort.sort(key=str.lower, reverse=True)
+        sorted_result = words_to_sort
 
     if sorted_result:
         st.divider()
-        st.subheader("Sorted Results:")
         
-        # Number the words for the display
-        numbered_output = ""
-        for i, word in enumerate(sorted_result, 1):
-            numbered_output += f"{i}. {word}\n"
+        # Display results with numbering
+        output_text = "\n".join([f"{i}. {w}" for i, w in enumerate(sorted_result, 1)])
+        st.text_area("Sorted List:", value=output_text, height=250)
         
-        st.text_area("Result Output", value=numbered_output, height=300)
-        
-        # --- EXPORT SECTION (ALL PREMIUM NOW) ---
-        st.subheader("📥 Export Results")
+        # --- THE DOWNLOAD PAYWALL & ALERT ---
+        st.subheader("📥 Save Your Results")
         
         if has_premium:
+            st.write("Choose your format below:")
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.download_button("Text (.txt)", data=numbered_output, file_name="words.txt")
+                st.download_button("Text (.txt)", data=output_text, file_name="sorted.txt")
             with c2:
                 pdf_data = create_pdf(sorted_result)
-                st.download_button("PDF (.pdf)", data=pdf_data, file_name="sorted.pdf", mime="application/pdf")
+                st.download_button("PDF (.pdf)", data=pdf_data, file_name="sorted.pdf")
             with c3:
                 xlsx_data = create_excel(sorted_result)
-                st.download_button("Excel (.xlsx)", data=xlsx_data, file_name="sorted.xlsx", mime="application/vnd.ms-excel")
+                st.download_button("Excel (.xlsx)", data=xlsx_data, file_name="sorted.xlsx")
         else:
-            st.error("🛑 **Download Locked!**")
-            st.write("Downloading results (TXT, PDF, or Excel) is a **Premium Feature**.")
-            st.info("Subscribe for **$15 initially**, then **$10/month** to unlock downloads and unlimited sorting.")
-            st.link_button("Get Premium Access Now", CHECKOUT_URL)
+            # High-visibility alert about downloading
+            st.error("🔒 **Download Feature Locked**")
+            st.info("💡 **Premium Benefit:** Subscribers can download results as professional **TXT, PDF, and Excel** files with one click!")
+            st.write("To unlock downloads and sort more than 10 words, subscribe for **$15 initially** (then $10/month).")
+            st.link_button("🚀 Get Premium Now", CHECK_LINK)
 else:
-    st.info("Paste your text above to start sorting!")
+    st.info("Input a paragraph to begin.")
