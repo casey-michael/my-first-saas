@@ -52,15 +52,20 @@ def is_premium(license_key):
         return False
 
 # --- EXPORT HELPERS ---
-def create_pdf(word_list, counts):
+def create_pdf(sorted_words, word_counts):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Word Sorter Pro - Results", ln=1, align='C')
-    for i, word in enumerate(word_list, 1):
-        txt = f"{i}. {word} (Occurrences: {counts[word]})"
-        pdf.cell(200, 10, txt=txt, ln=1)
-    return pdf.output(dest='S').encode('latin-1')
+    
+    pdf.cell(200, 10, txt="Word Sorter Results", ln=1, align='C')
+    pdf.ln(10)
+    
+    for word in sorted_words:
+        pdf.cell(200, 10, txt=f"{word}: {word_counts[word]}", ln=1)
+    
+    # FIX: Use 'dest="S"' but remove '.encode()' or use the modern output format
+    # For modern fpdf2 (which Streamlit Cloud usually installs):
+    return pdf.output()
 
 def create_excel(word_list, counts):
     df = pd.DataFrame({
