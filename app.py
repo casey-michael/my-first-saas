@@ -1,25 +1,34 @@
 import streamlit as st
 
-st.set_page_config(page_title="TextInsight SaaS", page_icon="📈")
+st.set_page_config(page_title="WordSorter SaaS", page_icon="📝")
 
-st.title("📈 TextInsight: Instant Character Analytics")
-st.write("Businesses use this to analyze customer feedback trends!")
+st.title("📝 Smart Word Sorter")
 
-# The Input
-user_text = st.text_area("Paste your text here (e.g., customer reviews):")
-
-if user_text:
-    # The Logic (Using your Dictionary Comprehension skills!)
-    # This counts how many times each character appears
-    char_count = {char: user_text.count(char) for char in set(user_text) if char.strip()}
+# 1. Sidebar for Access
+with st.sidebar:
+    st.header("Settings")
+    access_code = st.text_input("Enter Pro Access Code:", type="password")
     
-    st.subheader("Your Analysis Results:")
-    
-    # Displaying the data in a nice way
-    st.bar_chart(char_count)
-    
-    st.write("Detailed Breakdown:")
-    st.json(char_count)
+    # The Lemon Squeezy Button
+    st.divider()
+    st.write("Don't have a code?")
+    st.link_button("🚀 Get Pro Access ($5)", "https://your-store.lemonsqueezy.com/checkout/...") 
 
-    # The "Premium" Hook
-    st.info("💡 Upgrade to Pro to export this data to Excel and analyze 10,000+ words!")
+# 2. Free vs Pro Logic
+if access_code == "NIGERIA2026": # You can change this or automate it later
+    st.success("Pro Access Active!")
+    # PRO FEATURES
+    user_input = st.text_area("Paste giant list (Pro Mode):")
+    if user_input:
+        words = sorted(user_input.split())
+        st.write(words)
+        st.download_button("Download as CSV", data="\n".join(words))
+else:
+    # FREE FEATURES
+    st.info("Free Mode: Sort up to 10 words.")
+    user_input = st.text_area("Paste your words:")
+    if user_input:
+        words = user_input.split()[:10] # Limit to 10 words
+        st.write(sorted(words))
+        if len(user_input.split()) > 10:
+            st.warning("Only the first 10 words were sorted. Upgrade to Pro for unlimited!")
