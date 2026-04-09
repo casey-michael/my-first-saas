@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import re
 import pandas as pd
-from fpdf import FPDF
+from fpdf import FPDF  # This remains the same even if you install fpdf2
 from io import BytesIO
 
 # --- CONFIGURATION ---
