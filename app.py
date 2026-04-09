@@ -1,71 +1,55 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="WordSorter Pro", page_icon="🚀")
-
-# --- CONFIGURATION ---
-LEMON_SQUEEZY_API_KEY = st.secrets["LEMON_API_KEY"] # Put this in your Streamlit Secrets
-
-def validate_license(license_key):
-    """Checks with Lemon Squeezy if the key is valid and not used by others"""
-    url = "https://api.lemonsqueezy.com/v1/licenses/activate"
-    headers = {"Accept": "application/json"}
-    data = {
-        "license_key": license_key,
-        "instance_name": "User_Device" # This locks it to their current browser/session
+# 1. Function to verify the subscription status
+def is_subscription_active(license_key):
+    """Checks with Lemon Squeezy if the subscription is currently active."""
+    url = "https://api.lemonsqueezy.com/v1/licenses/validate"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {st.secrets['LEMON_API_KEY']}"
     }
-    response = requests.post(url, headers=headers, data=data)
-    return response.json()
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.title("Settings")
-    user_key = st.text_input("Enter your License Key:", type="password")
-    is_pro = False
+    payload = {"license_key": license_key}
     
-    if user_key:
-        result = validate_license(user_key)
-        if result.get("activated"):
-            st.success("Pro Active!")
-            is_pro = True
-        else:
-            st.error("Invalid or Already Used Key")
-
-    st.divider()
-    if not is_pro:
-        st.write("Unlock Unlimited Sorting for $10")
-        st.link_button("🚀 Buy Pro License", "https://yourstore.lemonsqueezy.com/checkout/...")
-
-# --- MAIN APP ---
-st.title("📝 WordSorter Pro")
-
-if is_pro:
-    # --- PRO FEATURES ---
-    text = st.text_area("Paste your list:")
-    sort_choice = st.selectbox("Select Sorting Method:", 
-                               ["A to Z", "Z to A", "By Length (Shortest first)", "By Length (Longest first)"])
-    
-    if text:
-        words = text.split()
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
         
-        # New Feature: Advanced Sorting Logic
-        if sort_choice == "A to Z":
-            words.sort()
-        elif sort_choice == "Z to A":
-            words.sort(reverse=True)
-        elif sort_choice == "By Length (Shortest first)":
-            words.sort(key=len)
-        else:
-            words.sort(key=len, reverse=True)
+        # 'valid' means the key exists; 'status' must be 'active' for subscriptions
+        status = data.get("meta", {}).get("status")
+        return data.get("valid", False) and status == "active"
+    except Exception:
+        return False
 
-        st.write("✅ Sorted Results:")
-        st.write(words)
-        st.download_button("Export to CSV", data="\n".join(words))
+# 2. Sidebar UI for the License Key
+st.sidebar.title("🔐 Word Sorter Pro")
+user_license = st.sidebar.text_input("Enter your License Key", type="password")
 
+if user_license:
+    if is_subscription_active(user_license):
+        st.sidebar.success("Subscription Active! ✅")
+        
+        # --- YOUR MAIN APP CODE STARTS HERE ---
+        st.title("Word Sorter Pro")
+        st.write("Welcome back! Your premium features are unlocked.")
+        
+        text_data = st.text_area("Enter words to sort (one per line):", height=200)
+        if st.button("Sort Alphabetically"):
+            if text_data:
+                words = [word.strip() for word in text_data.split('\n') if word.strip()]
+                words.sort()
+                st.text_area("Sorted Results:", value='\n'.join(words), height=200)
+            else:
+                st.warning("Please enter some words first.")
+        # --- YOUR MAIN APP CODE ENDS HERE ---
+        
+    else:
+        st.sidebar.error("Invalid or Expired Subscription ❌")
+        st.error("Your subscription is inactive. Please renew to continue.")
+        st.link_button("Renew Subscription ($10/mo)", "https://your-store.lemonsqueezy.com/checkout/...")
 else:
-    # --- FREE FEATURES ---
-    st.warning("Free version: Sorting A to Z only (Max 5 words)")
-    free_text = st.text_area("Paste words:")
-    if free_text:
-        words = sorted(free_text.split()[:5])
-        st.write(words)
+    # This part shows if the user hasn't entered a key yet
+    st.info("### 🚀 Get Started with Word Sorter Pro")
+    st.write("Organize your lists instantly. Subscribe now for just **$15 initially** ($5 setup fee + $10 first month).")
+    st.link_button("Subscribe & Get License Key", "https://your-store.lemonsqueezy.com/checkout/...")
+    st.stop() # Prevents the rest of the app from loading
