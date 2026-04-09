@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import re
+import io
 import pandas as pd
 from fpdf import FPDF
 from io import BytesIO
@@ -61,11 +62,16 @@ def create_pdf(sorted_words, word_counts):
     pdf.ln(10)
     
     for word in sorted_words:
-        pdf.cell(200, 10, txt=f"{word}: {word_counts[word]}", ln=1)
+        # Use str() to ensure numbers don't cause errors
+        line_text = f"{word}: {word_counts[word]}"
+        pdf.cell(200, 10, txt=line_text, ln=1)
     
-    # FIX: Use 'dest="S"' but remove '.encode()' or use the modern output format
-    # For modern fpdf2 (which Streamlit Cloud usually installs):
-    return pdf.output()
+    # This is the "Magic" part:
+    # We output the PDF as bytes directly
+    pdf_bytes = pdf.output() 
+    
+    # If pdf.output() returns a bytearray, we convert it to bytes
+    return bytes(pdf_bytes)
 
 def create_excel(word_list, counts):
     df = pd.DataFrame({
