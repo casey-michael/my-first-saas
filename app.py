@@ -75,7 +75,7 @@ if is_pro:
     st.sidebar.success("Premium Active ✅")
 else:
     st.sidebar.warning("Premium Features Locked")
-    st.sidebar.link_button("Subscribe for ₦14,000", "https://paystack.shop/pay/yjn6h0qdb9")
+    st.sidebar.link_button("Subscribe for ₦14,000", "https://paystack.shop/pay/ep6ce94qwz")
 
 # Support Section
 st.sidebar.divider()
