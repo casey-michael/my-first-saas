@@ -128,7 +128,11 @@ if input_text:
             st.caption("Get your data in .xlsx format for advanced sorting and graphing.")
 
         # 3. Direct Call to Action
-        st.button("Unlock All Features Now", on_click=lambda: st.sidebar.focus(), help="Click to go to the sidebar payment link")
+        st.link_button(
+            label="🔥 Unlock All Features Now",
+            url="https://paystack.com/pay/your-slug-here",  # Replace this with your actual Paystack link
+            use_container_width=True
+            )
     # 4. Handle Downloads
     if is_pro:
         st.divider()
