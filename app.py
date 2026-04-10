@@ -45,8 +45,13 @@ def create_pdf(sorted_words, word_counts):
     # Table Data
     pdf.set_font("Arial", size=11)
     for word in sorted_words:
-        pdf.cell(95, 10, txt=f" {word}", border=1)
-        pdf.cell(95, 10, txt=f" {word_counts[word]}", border=1, ln=1, align='C')
+        # --- THE FIX IS HERE ---
+        # This removes emojis or symbols that Arial can't print
+        safe_word = str(word).encode('latin-1', 'ignore').decode('latin-1')
+        count = str(word_counts[word])
+        
+        pdf.cell(95, 10, txt=f" {safe_word}", border=1)
+        pdf.cell(95, 10, txt=f" {count}", border=1, ln=1, align='C')
     
     pdf.ln(10)
     pdf.set_font("Arial", 'I', 8)
