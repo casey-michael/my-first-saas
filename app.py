@@ -130,7 +130,7 @@ if input_text:
         # 3. Direct Call to Action
         st.link_button(
             label="🔥 Unlock All Features Now",
-            url="https://paystack.com/pay/your-slug-here",  # Replace this with your actual Paystack link
+            url="https://paystack.shop/pay/ep6ce94qwz",  # Replace this with your actual Paystack link
             use_container_width=True
             )
     # 4. Handle Downloads
