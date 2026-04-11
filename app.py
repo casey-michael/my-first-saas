@@ -97,15 +97,29 @@ if input_text:
     full_sorted_list = sorted(word_counts.keys())
     total_count = len(full_sorted_list)
 
+    
+    
+
     # 2. Apply the Limit
     if is_pro:
         display_list = full_sorted_list
         st.subheader("✅ Full Premium Results")
+        # --- THE FIX: Create a "Display Loop" to show word + number ---
+        for word in display_list:
+            count = word_counts[word]
+            # This shows the word in bold and the number next to it
+            st.write(f"**{word}**: {count}")
+    
     else:
         # 1. Limit the display
         display_list = full_sorted_list[:10]
         st.subheader("🆓 Free Preview (First 10 words)")
         st.write(display_list)
+        # --- THE FIX: Create a "Display Loop" to show word + number ---
+        for word in display_list:
+            count = word_counts[word]
+            # This shows the word in bold and the number next to it
+            st.write(f"**{word}**: {count}")
         
         st.warning(f"⚠️ You are viewing a limited preview (10 of {total_count} words).")
 
@@ -133,7 +147,7 @@ if input_text:
             url="https://paystack.shop/pay/ep6ce94qwz",  # Replace this with your actual Paystack link
             use_container_width=True
             )
-    # 4. Handle Downloads
+
     if is_pro:
         st.divider()
         st.markdown("### 📥 Premium Exports")
